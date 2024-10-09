@@ -2761,6 +2761,14 @@ class FoodPlan:
     play_audio_times: int
     grain_num: int
 
+    def set(self, other: FoodPlan):
+        self.id_ = other.id_
+        self.execution_time = other.execution_time
+        self.scheduled_days = other.scheduled_days
+        self.enable_audio = other.enable_audio
+        self.play_audio_times = other.play_audio_times
+        self.grain_num = other.grain_num
+
     @staticmethod
     def from_dict(data: dict) -> FoodPlan:
         return FoodPlan(
@@ -2793,6 +2801,19 @@ class FoodPlans:
     @staticmethod
     def create(*args: FoodPlan) -> FoodPlans:
         return FoodPlans(args)
+
+    def plan_set(self, food_plan: FoodPlan):
+        plan_found: bool = False
+
+        for plan in self.plans:
+            if plan.id_ == food_plan.id_:
+                plan_found = True
+
+                plan.set(food_plan)
+                break
+
+        if plan_found == False:
+            self.plans.append(food_plan)
 
     @staticmethod
     def from_dict(data: dict) -> FoodPlans:
@@ -3070,7 +3091,7 @@ class Backend:
         )
         self.client.attr_set_service_send(attr_set_service_out)
 
-    def food_plans_set(self, food_plans: FoodPlan):
+    def food_plans_set(self, food_plans: FoodPlans):
         # Update internal stored food plans
         # Required to hold this if the device re-connects and asks
         # for syncing the current food plans
@@ -3591,7 +3612,7 @@ class Backend:
 
         return delta < datetime.timedelta(seconds = self.NTP_SYNC_TIME_DIFF_THRESHOLD_SEC)
 
-    def _device_food_plans_sync(self, food_plans: FoodPlan):
+    def _device_food_plans_sync(self, food_plans: FoodPlans):
         feeding_plans_out: [FeedingPlanOut] = []
 
         sync_time_now = Timestamp.now()
@@ -3708,7 +3729,15 @@ class HomeAssistantDiscoveryMqtt:
         self._ha_binary_sensor_config_publish('Food outlet blocked', 'mdi:food', 'food', 'outlet_blocked')
         self._ha_binary_sensor_config_publish('Food low fill level', 'mdi:food', 'food', 'low_fill_level')
 
-        self._ha_text_config_publish('Food plans', 'mdi:food', 'food', 'plans', 'config')
+        self._ha_text_config_publish('Food plan 1', 'mdi:food', 'food', 'plan_1', 'config')
+        self._ha_text_config_publish('Food plan 2', 'mdi:food', 'food', 'plan_2', 'config')
+        self._ha_text_config_publish('Food plan 3', 'mdi:food', 'food', 'plan_3', 'config')
+        self._ha_text_config_publish('Food plan 4', 'mdi:food', 'food', 'plan_4', 'config')
+        self._ha_text_config_publish('Food plan 5', 'mdi:food', 'food', 'plan_5', 'config')
+        self._ha_text_config_publish('Food plan 6', 'mdi:food', 'food', 'plan_6', 'config')
+        self._ha_text_config_publish('Food plan 7', 'mdi:food', 'food', 'plan_7', 'config')
+        self._ha_text_config_publish('Food plan 8', 'mdi:food', 'food', 'plan_8', 'config')
+        self._ha_text_config_publish('Food plan 9', 'mdi:food', 'food', 'plan_9', 'config')
         self._ha_button_config_publish('Manual feed', 'mdi:food', 'food', 'manual_feed')
         self._ha_number_slider_config_publish('Manual feed grain num', 'mdi:hamburger-plus', 'food', 'manual_feed_grain_num', 1, 24)
         
@@ -4071,7 +4100,10 @@ class Plaf203(adbase.ADBase):
         manual_feed_grain_num = self.storage.food_manual_feed_grain_num_get()
         self._food_manual_feed_grain_num_set(manual_feed_grain_num)
 
-        food_plans = self.storage.food_plans_get()
+        food_plans: FoodPlans = self.storage.food_plans_get()
+
+        self.ad.log("Stored food plans: {}".format(food_plans))
+
         self._food_plans_set(food_plans)
 
     def _user_input_topics_subscribe(self):
@@ -4116,7 +4148,15 @@ class Plaf203(adbase.ADBase):
         self._mqtt_subscribe('button_lights/cmd/enable', self._mqtt_cmd_button_light_enable_cb)
         self._mqtt_subscribe('button_lights/cmd/aging_type', self._mqtt_cmd_button_light_aging_type_cb)
 
-        self._mqtt_subscribe('food/cmd/plans', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_1', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_2', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_3', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_4', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_5', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_6', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_7', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_8', self._mqtt_cmd_food_plans)
+        self._mqtt_subscribe('food/cmd/plan_9', self._mqtt_cmd_food_plans)
         self._mqtt_subscribe('food/cmd/manual_feed', self._mqtt_cmd_manual_feed_cb)
         self._mqtt_subscribe('food/cmd/manual_feed_grain_num', self._mqtt_cmd_manual_feed_grain_num_cb)
 
@@ -4613,7 +4653,9 @@ class Plaf203(adbase.ADBase):
         self._mqtt_publish_int('food/manual_feed_grain_num', grain_num)
 
     def _food_plans_set(self, food_plans: FoodPlans):
-        self._mqtt_publish_dict('food/plans', food_plans.to_dict(), True)
+        for plan in food_plans.plans:
+            topic = 'food/plan_{}'.format(plan.id_)
+            self._mqtt_publish_dict(topic, plan.to_dict(), True)
 
     #########################
 
@@ -4750,14 +4792,17 @@ class Plaf203(adbase.ADBase):
     def _mqtt_cmd_food_plans(self, eventname: str, data: dict, kwargs):
         try:
             payload = json.loads(data['payload'])
-            food_plans = FoodPlans.from_dict(payload)
+            food_plan = FoodPlan.from_dict(payload)
         except Exception as error:
-            self.ad.log("WARNING: Invalid input for food plans payload, ignoring: {}".format(data['payload']))
+            self.ad.log("WARNING: Invalid input for food plan payload, ignoring: {}".format(data['payload']))
             self.ad.log("Exception message: {}".format(error))
             return
 
-        self.backend.food_plans_set(food_plans)
+        food_plans: FoodPlans = self.storage.food_plans_get()
+        food_plans.plan_set(food_plan)
         self.storage.food_plans_set(food_plans)
+
+        self.backend.food_plans_set(food_plans)
 
     def _mqtt_cmd_manual_feed_grain_num_cb(self, eventname: str, data: dict, kwargs):
         self.storage.food_manual_feed_grain_num_set(int(data['payload']))
