@@ -159,6 +159,29 @@ to deploy it to AppDaemon:
 * Considering you have MQTT discover with home assistant enabled, the device should appear on your
   home assistant's MQTT integration as `Pet libro cat feeder`
 
+#### Feeder configuration
+
+All configuration options of the feeder are exposed as writable configuration entities on the MQTT
+device such as switches, text, sliders, number boxes or drop-down lists.
+
+Most of these should be self-explanatory, except for the food plans. Currently, up to 10 food
+plans can be configured. The food plan defines when the feeder is outputting a specific amount of
+food automatically.
+
+This is currently implemented by providing a json formatted data structure on the available
+configuration entities. Contributions to make this more user-friendly but also avoiding complexity
+are very welcome.
+
+Here is an example of one food plan that runs daily at 19:00 with the feeding sound disabled and
+outputs 3 portions. Just copy-paste into one or multiple food plan slots and make sure the `id`
+field differs (just increment it, that's sufficient).
+
+```json
+{"id": 1, "execution_time": {"hour": 19, "minute": 0}, "scheduled_days": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"], "enable_audio": false, "play_audio_times": 1, "grain_num": 3}
+```
+
+Scheduled days is a set of days when to run the plan.
+
 ### Some more network communication
 
 Capture the network traffic and also looking into the firmware, I discovered the following hostnames
