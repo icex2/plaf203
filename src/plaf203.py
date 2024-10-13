@@ -808,6 +808,11 @@ class AttrPushEventIn:
     power_type: Optional[PowerType] = None
     electric_quantity: Optional[PercentageInt] = None
 
+    # Feeder state
+    surplus_grain: bool = None
+    motor_state: int = None
+    grain_outlet_state: bool = None
+
     # Audio playback
     enable_audio: Optional[bool] = None
     audio_url: Optional[str] = None # max length 100
@@ -904,6 +909,13 @@ class AttrPushEventIn:
             data = data | { 'power_type': PowerType(int(payload['powerType'])) }
         if 'electricQuantity' in payload:
             data = data | { 'electric_quantity': PercentageInt(int(payload['electricQuantity'])) }
+
+        if 'surplusGrain' in payload:
+            data = data | { 'surplus_grain': payload['surplusGrain'] }
+        if 'motorState' in payload:
+            data = data | { 'motor_state': int(payload['motorState']) }
+        if 'grainOutletState' in payload:
+            data = data | { 'grain_outlet_state': payload['grainOutletState'] }
 
         if 'enableAudio' in payload:
             data = data | { 'enable_audio': payload['enableAudio'] }
@@ -3461,6 +3473,13 @@ class Backend:
                 battery_level = attr_push_event_in.electric_quantity,
                 mode = attr_push_event_in.power_mode,
                 type_ = attr_push_event_in.power_type,
+            )
+
+        if not self.state_food_callback == None:
+            self.state_food_callback(
+                motor_state = attr_push_event_in.motor_state,
+                outlet_blocked = not attr_push_event_in.grain_outlet_state,
+                low_fill_level = not attr_push_event_in.surplus_grain,
             )
 
         if not self.device_sd_card_info_callback == None:
