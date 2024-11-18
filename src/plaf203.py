@@ -3186,6 +3186,14 @@ class Backend:
             else:
                 if not self.ntp_sync_status_callback == None:
                     self.ntp_sync_status_callback(True)
+        else:
+            # With every heartbeat, re-sync the device state
+            # Somewhat duct-taping inconsistent state issues
+            # as I have seen odd things happening like the food level state
+            # or the food output blocked state not being updated properly
+            # via the push events
+            attr_get_service_out = AttrGetServiceOut.create()
+            self.client.attr_get_service_send(attr_get_service_out)
 
         # Periodic heartbeat resets the watchdog as long as the device keeps responding
         self.heartbeat_watchdog.reset()
