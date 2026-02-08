@@ -3723,7 +3723,7 @@ class HomeAssistantDiscoveryMqtt:
         # TODO support aging type 2 items
 
         self._ha_switch_config_publish('Button lights enable', 'mdi:lightbulb', 'button_lights', 'enable', 'config')
-        self._ha_number_box_config_publish('Button lights aging type', 'mdi:lightbulb', 'button_lights', 'aging_type', [ AgingType.NON_SCHEDULED_ENABLED.name , AgingType.SCHEDULED_ENABLED.name ], 'config')
+        self._ha_select_config_publish('Button lights aging type', 'mdi:lightbulb', 'button_lights', 'aging_type', [ AgingType.NON_SCHEDULED_ENABLED.name , AgingType.SCHEDULED_ENABLED.name ], 'config')
 
         self._ha_switch_config_publish('Buttons auto lock enable', 'mdi:lock', 'buttons_auto_lock', 'enable', 'config')
         self._ha_number_slider_config_publish('Buttons auto lock threshold', 'mdi:lock', 'buttons_auto_lock', 'threshold', 0, 100, 'config')
